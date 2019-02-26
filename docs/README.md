@@ -2,8 +2,11 @@
 
 Installation:
 
+(Optional steps)
 * virtualenv -p python3 venv
 * source venv/bin/activate
+
+(Required steps)
 * pip install -r requirements.txt
 
 Usage:
