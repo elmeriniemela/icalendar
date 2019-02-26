@@ -2,13 +2,10 @@ from icalendar import Calendar, Event
 import sys
 import os
 
-with open(sys.argv[1], 'rb') as f:
-    cal = Calendar.from_ical(f.read())
+def calToString(cal):
+    return '\n'.join(['%s: %s' % (k, v) for k, v in mapCal(cal).items()])
 
-def getCurrentCal():
-    return '\n'.join(['%s: %s' % (k, v) for k, v in mapCal().items()])
-
-def mapCal():
+def mapCal(cal):
     count = 1
     mapping = {}
     for component in cal.walk(name='VEVENT'):
@@ -18,7 +15,7 @@ def mapCal():
             count += 1
     return mapping
 
-def auto_refactor():
+def auto_refactor(cal):
     import re
     from datetime import datetime
     current_year = datetime.now().year
@@ -43,13 +40,10 @@ def auto_refactor():
         r"Otakaari 1": "",
         r"Kurssitentti/Course examination/Kurssitentti": "TENTTI",
         r"  ": r" ",
-
     }
 
-    results = {
-
-    }
-    current_summarys = list(mapCal().values())
+    results = {}
+    current_summarys = list(mapCal(cal).values())
     for summary in current_summarys:
         new_parts = []
         parts = summary.split(',')
@@ -79,57 +73,40 @@ def auto_refactor():
         print("Refactored:")
         print(value)
         print()
-
-    with open(sys.argv[1].replace('.ics', '') + "_refactored.ics", 'wb') as f:
+    
+    filename = sys.argv[1].rstrip('.ics') + "_refactored.ics"
+    with open(filename, 'wb') as f:
         f.write(cal.to_ical())
+    print("Refactored .ics saved to: " + filename)
 
-   
-def handle_input():
-    numbers = input("Number to replace (separate with comma if multiple selection ie. '1,2,3,4...'):\n")
-    replacement = input("Give replacement:\n")
-    list_of_nums = numbers.split(',')
-    mapping = mapCal()
-    for number in list_of_nums:
-        try:
-            number = int(number)
-            old_name = mapping[number]
-            for component in cal.walk():
-                if component.name == 'VEVENT':
-                    if old_name == str(component['summary']):
-                        component['summary'] = replacement
-        except Exception as error:
-            print(error)
 
-def help():
-    print(
-        "\nCommands:\n"
-        "p = print open calendar\n"
-        "q = quit\n"
-        "s = save to example.ics\n"
-        "r = refactor 1 or multiple lines\n"
-        "a = autorefactor\n"
-        "cls = clear screen (run 'cls' in terminal)\n"
-        "? = help\n"
-    )
-help()
-while True:
-    command = input("> ")
-    if command == 'q':
-        break
-    elif command == 's':
-        f = open('example.ics', 'wb')
-        f.write(cal.to_ical())
-        f.close()
-    elif command == 'r':
-        handle_input()
-    elif command == 'a':
-        auto_refactor()
-    elif command == 'p':
-        print("\n" + getCurrentCal() + "\n")
-    elif command == '?':
-        help()
-    elif command == 'cls':
-        os.system('cls')
-    else:
-        print("Not valid command. Type ? for help")
+
+if __name__ == "__main__":
+    with open(sys.argv[1], 'rb') as f:
+        cal = Calendar.from_ical(f.read())
+
+    def help():
+        print(
+            "\nCommands:\n"
+            "a = autorefactor\n"
+            "p = print open calendar\n"
+            "cls = clear screen\n"
+            "q = quit\n"
+            "? = help\n"
+        )
+    help()
+    while True:
+        command = input("> ")
+        if command == 'q':
+            break
+        elif command == 'a':
+            auto_refactor(cal)
+        elif command == 'p':
+            print("\n" + calToString(cal) + "\n")
+        elif command == '?':
+            help()
+        elif command == 'cls':
+            os.system('cls' if os.name == 'nt' else 'clear')
+        else:
+            print("Not valid command. Type ? for help")
     
