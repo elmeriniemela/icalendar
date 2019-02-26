@@ -7,6 +7,7 @@ Installation:
 * source venv/bin/activate
 
 (Required steps)
+* git clone https://github.com/thecodebasesite/icalendar.git
 * pip install -r requirements.txt
 
 Usage:
