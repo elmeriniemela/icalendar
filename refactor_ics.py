@@ -21,10 +21,10 @@ def auto_refactor(ical_object):
         results.update({summary: ",".join(parts).strip()})
 
     for key, value in results.items():
-        for component in ical_object.walk():
-            if component.name == 'VEVENT':
-                if key == str(component['summary']):
-                    component['summary'] = value
+        for component in ical_object.walk(name='VEVENT'):
+            if key == str(component['summary']):
+                component['summary'] = value
+                
         print()
         print("Original:")
         print(key)
