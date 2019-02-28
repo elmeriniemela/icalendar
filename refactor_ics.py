@@ -1,26 +1,25 @@
-from icalendar import Calendar, Event
+
 import sys
 import os
+import re
+from datetime import datetime
+from icalendar import Calendar
 
-def calToString(cal):
-    return '\n'.join(['%s: %s' % (k, v) for k, v in mapCal(cal).items()])
+def summaries_as_str(ical_object):
+    return '\n'.join(['%s: %s' % (count, summary) for count, summary in enumerate(distinct_summaries(ical_object), start=1)])
 
-def mapCal(cal):
-    count = 1
-    mapping = {}
-    for component in cal.walk(name='VEVENT'):
-        old_name = str(component['summary'])
-        if not old_name in mapping.values():
-            mapping[count] = old_name
-            count += 1
-    return mapping
+def distinct_summaries(ical_object):
+    summaries = set()
+    for component in ical_object.walk(name='VEVENT'):
+        summaries.add(str(component['summary']))
+    return summaries
 
-def auto_refactor(cal):
-    import re
-    from datetime import datetime
+def excludable(part):
     current_year = datetime.now().year
     exclude = [
         str(current_year),
+        str(current_year + 1),
+        str(current_year - 1),
         "Luento/",
         "Lecture/",
         "Föreläsning/",
@@ -34,27 +33,31 @@ def auto_refactor(cal):
         "/Exercises",
         "/Övningar",
     ]
+    for pattern in exclude:
+        if re.findall(pattern, part):
+            return True
+    return False
 
+
+def auto_refactor(ical_object):
     replacements = {
+        # Targers cource code ' / 28C00500 - '
         r" / .*? - ": " ",
         r"Otakaari 1": "",
         r"Kurssitentti/Course examination/Kurssitentti": "TENTTI",
         r"  ": r" ",
     }
-
     results = {}
-    current_summarys = list(mapCal(cal).values())
+    current_summarys = distinct_summaries(ical_object)
     for summary in current_summarys:
-        new_parts = []
         parts = summary.split(',')
+        parts = list(filter(lambda part: not excludable(part), parts))
+        
+        new_parts = []
         for part in parts:
             for find, replace in replacements.items():
                 part = re.sub(find, replace, part)
-            for pattern in exclude:
-                if re.findall(pattern, part):
-                    break
-            else:
-                new_parts.append(part)
+            new_parts.append(part)
 
         re_ordered = list(new_parts)
         for index, new_part in enumerate(new_parts):
@@ -63,7 +66,7 @@ def auto_refactor(cal):
         results.update({summary: ",".join(re_ordered).strip()})
 
     for key, value in results.items():
-        for component in cal.walk():
+        for component in ical_object.walk():
             if component.name == 'VEVENT':
                 if key == str(component['summary']):
                     component['summary'] = value
@@ -76,14 +79,14 @@ def auto_refactor(cal):
     
     filename = sys.argv[1].rstrip('.ics') + "_refactored.ics"
     with open(filename, 'wb') as f:
-        f.write(cal.to_ical())
+        f.write(ical_object.to_ical())
     print("Refactored .ics saved to: " + filename)
 
 
 
 if __name__ == "__main__":
     with open(sys.argv[1], 'rb') as f:
-        cal = Calendar.from_ical(f.read())
+        CAL = Calendar.from_ical(f.read())
 
     def help():
         print(
@@ -100,9 +103,9 @@ if __name__ == "__main__":
         if command == 'q':
             break
         elif command == 'a':
-            auto_refactor(cal)
+            auto_refactor(CAL)
         elif command == 'p':
-            print("\n" + calToString(cal) + "\n")
+            print("\n" + summaries_as_str(CAL) + "\n")
         elif command == '?':
             help()
         elif command == 'cls':
