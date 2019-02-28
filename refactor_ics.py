@@ -5,8 +5,38 @@ import re
 from datetime import datetime
 from icalendar import Calendar
 
-def summaries_as_str(ical_object):
-    return '\n'.join(['%s: %s' % (count, summary) for count, summary in enumerate(distinct_summaries(ical_object), start=1)])
+def print_summaries(ical_object):
+    print(
+        '\n'.join([
+            '%s: %s' % (count, summary)
+            for count, summary in enumerate(distinct_summaries(ical_object), start=1)
+        ]),
+    )
+
+def auto_refactor(ical_object):
+    results = {}
+    current_summarys = distinct_summaries(ical_object)
+    for summary in current_summarys:
+        parts = sorted(map(refactor, filter(useful, summary.split(','))), key=auditorium_last)
+        results.update({summary: ",".join(parts).strip()})
+
+    for key, value in results.items():
+        for component in ical_object.walk():
+            if component.name == 'VEVENT':
+                if key == str(component['summary']):
+                    component['summary'] = value
+        print()
+        print("Original:")
+        print(key)
+        print("Refactored:")
+        print(value)
+        print()
+    
+    filename = sys.argv[1].rstrip('.ics') + "_refactored.ics"
+    with open(filename, 'wb') as f:
+        f.write(ical_object.to_ical())
+    print("Refactored .ics saved to: " + filename)
+
 
 def distinct_summaries(ical_object):
     summaries = set()
@@ -14,7 +44,7 @@ def distinct_summaries(ical_object):
         summaries.add(str(component['summary']))
     return summaries
 
-def excludable(part):
+def useful(part):
     current_year = datetime.now().year
     exclude = [
         str(current_year),
@@ -35,11 +65,10 @@ def excludable(part):
     ]
     for pattern in exclude:
         if re.findall(pattern, part):
-            return True
-    return False
+            return False
+    return True
 
-
-def auto_refactor(ical_object):
+def refactor(part):
     replacements = {
         # Targers cource code ' / 28C00500 - '
         r" / .*? - ": " ",
@@ -47,41 +76,14 @@ def auto_refactor(ical_object):
         r"Kurssitentti/Course examination/Kurssitentti": "TENTTI",
         r"  ": r" ",
     }
-    results = {}
-    current_summarys = distinct_summaries(ical_object)
-    for summary in current_summarys:
-        parts = summary.split(',')
-        parts = list(filter(lambda part: not excludable(part), parts))
-        
-        new_parts = []
-        for part in parts:
-            for find, replace in replacements.items():
-                part = re.sub(find, replace, part)
-            new_parts.append(part)
+    for find, replace in replacements.items():
+        part = re.sub(find, replace, part)
+    return part
 
-        re_ordered = list(new_parts)
-        for index, new_part in enumerate(new_parts):
-            if re.findall(r' [A-Z][0-9]', new_part):
-                re_ordered.append(re_ordered.pop(index))
-        results.update({summary: ",".join(re_ordered).strip()})
-
-    for key, value in results.items():
-        for component in ical_object.walk():
-            if component.name == 'VEVENT':
-                if key == str(component['summary']):
-                    component['summary'] = value
-        print()
-        print("Original:")
-        print(key)
-        print("Refactored:")
-        print(value)
-        print()
-    
-    filename = sys.argv[1].rstrip('.ics') + "_refactored.ics"
-    with open(filename, 'wb') as f:
-        f.write(ical_object.to_ical())
-    print("Refactored .ics saved to: " + filename)
-
+def auditorium_last(part):
+    if re.findall(r' [UY][0-9]', part):
+        return 1
+    return -1
 
 
 if __name__ == "__main__":
@@ -95,17 +97,18 @@ if __name__ == "__main__":
             "p = print open calendar\n"
             "cls = clear screen\n"
             "q = quit\n"
-            "? = help\n"
+            "? = help"
         )
     help()
     while True:
+        print()
         command = input("> ")
         if command == 'q':
             break
         elif command == 'a':
             auto_refactor(CAL)
         elif command == 'p':
-            print("\n" + summaries_as_str(CAL) + "\n")
+            print_summaries(CAL)
         elif command == '?':
             help()
         elif command == 'cls':
