@@ -1,41 +1,30 @@
 
-import sys
-import os
 import re
+import io
 from datetime import datetime
 from icalendar import Calendar
-
-def print_summaries(ical_object):
-    print(
-        '\n'.join([
-            '%s: %s' % (count, summary)
-            for count, summary in enumerate(distinct_summaries(ical_object), start=1)
-        ]),
-    )
 
 def auto_refactor(ical_object):
     results = {}
     current_summarys = distinct_summaries(ical_object)
     for summary in current_summarys:
-        parts = sorted(map(refactor, filter(useful, summary.split(','))), key=auditorium_last)
-        results.update({summary: ",".join(parts).strip()})
+        parts = sorted(filter(lambda part: bool(part), map(refactor, filter(useful, summary.split(',')))), key=auditorium_last)
+        results.update({summary: ", ".join(parts).strip()})
 
     for key, value in results.items():
         for component in ical_object.walk(name='VEVENT'):
             if key == str(component['summary']):
                 component['summary'] = value
-                
-        print()
-        print("Original:")
-        print(key)
-        print("Refactored:")
-        print(value)
-        print()
-    
-    filename = sys.argv[1].rstrip('.ics') + "_refactored.ics"
-    with open(filename, 'wb') as f:
-        f.write(ical_object.to_ical())
-    print("Refactored .ics saved to: " + filename)
+
+    return results
+
+def refactor_file(ics_file):
+    ical_obj = Calendar.from_ical(ics_file.read())
+    results = auto_refactor(ical_obj)
+    file_io = io.BytesIO(ical_obj.to_ical())
+    file_io.seek(0)
+    return file_io, results
+
 
 
 def distinct_summaries(ical_object):
@@ -50,18 +39,13 @@ def useful(part):
         str(current_year),
         str(current_year + 1),
         str(current_year - 1),
-        "Luento/",
-        "Lecture/",
-        "Föreläsning/",
-        "Harjoitukset/",
-        "Exercises/",
-        "Övningar/",
-        "/Luento",
-        "/Lecture",
-        "/Föreläsning",
-        "/Harjoitukset",
-        "/Exercises",
-        "/Övningar",
+        "Luento",
+        "Lecture",
+        "Föreläsning",
+        "Harjoitukset",
+        "Harjoitus",
+        "Exercises",
+        "Övningar",
     ]
     for pattern in exclude:
         if re.findall(pattern, part):
@@ -75,44 +59,24 @@ def refactor(part):
         r"Otakaari 1": "",
         r"Kurssitentti/Course examination/Kurssitentti": "TENTTI",
         r"  ": r" ",
+        r"H\d{2}": r"",
     }
     for find, replace in replacements.items():
         part = re.sub(find, replace, part)
+
+    chars = ', -/'
+    for _ in range(len(chars)*2):
+        part = part.strip(chars)
     return part
 
 def auditorium_last(part):
-    if re.findall(r' [UY][0-9]', part):
-        return 1
+    auditorium_patterns = [
+        r'^[A-Z]-Sali',
+        r'^[UY][0-9]',
+    ]
+    for pattern in auditorium_patterns:
+        if re.findall(pattern, part):
+            return 1
     return -1
 
-
-if __name__ == "__main__":
-    with open(sys.argv[1], 'rb') as f:
-        CAL = Calendar.from_ical(f.read())
-
-    def help():
-        print(
-            "\nCommands:\n"
-            "a = autorefactor\n"
-            "p = print open calendar\n"
-            "cls = clear screen\n"
-            "q = quit\n"
-            "? = help"
-        )
-    help()
-    while True:
-        print()
-        command = input("> ")
-        if command == 'q':
-            break
-        elif command == 'a':
-            auto_refactor(CAL)
-        elif command == 'p':
-            print_summaries(CAL)
-        elif command == '?':
-            help()
-        elif command == 'cls':
-            os.system('cls' if os.name == 'nt' else 'clear')
-        else:
-            print("Not valid command. Type ? for help")
     
