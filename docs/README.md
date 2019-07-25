@@ -16,6 +16,8 @@ Required steps:
 
 
 Usage:
+
 * `python3 refactor_ics.py <.ics-file>`
+
 
 ![alt text](https://raw.githubusercontent.com/thecodebasesite/icalendar/master/docs/icalendar.png)
