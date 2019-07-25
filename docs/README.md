@@ -2,14 +2,18 @@
 
 Installation:
 
-(Optional steps)
+Optional steps:
+
 * virtualenv -p python3 venv
 * source venv/bin/activate
 
-(Required steps)
+
+Required steps:
+
 * git clone https://github.com/thecodebasesite/icalendar.git
 * cd icalendar
 * pip install -r requirements.txt
+
 
 Usage:
 * `python3 refactor_ics.py <.ics-file>`
