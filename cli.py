@@ -76,7 +76,6 @@ if __name__ == "__main__":
             filter_words = commands[1:]
             filter_cal(NEW, filter_words)
             save(NEW)
-
         elif commands[0] == 'a':
             print_results(auto_refactor(NEW))
             save(NEW)
