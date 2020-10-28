@@ -14,8 +14,16 @@ def print_summaries(ical_object):
             for count, summary in enumerate(distinct_summaries(ical_object), start=1)
         ]),
     )
-    
 
+def accept_component(component, skip_words):
+    if component.name == 'VEVENT':
+        if any(w in component['SUMMARY'] for w in skip_words):
+            return False
+    return True
+
+
+def filter_cal(ical_object, skip_words):
+    ical_object.subcomponents = [c for c in ical_object.subcomponents if accept_component(c, skip_words)]
 
 def save(ical_object):
     filename = sys.argv[1].rstrip('.ics') + "_refactored.ics"
@@ -39,13 +47,19 @@ def print_results(results):
 
 if __name__ == "__main__":
     with open(sys.argv[1], 'rb') as f:
-        CAL = Calendar.from_ical(f.read())
+        data = f.read()
+
+    NEW = Calendar.from_ical(data)
+    OLD = Calendar.from_ical(data)
+
 
     def help():
         print(
             "\nCommands:\n"
             "a = autorefactor\n"
-            "p = print open calendar\n"
+            "f = filter\n"
+            "p = print edited calendar\n"
+            "o = print original calendar\n"
             "cls = clear screen\n"
             "q = quit\n"
             "? = help"
@@ -53,18 +67,27 @@ if __name__ == "__main__":
     help()
     while True:
         print()
-        command = input("> ")
-        if command == 'q':
+        commands = input("> ").split(' ')
+        if not commands:
+            continue
+        elif commands[0] == 'q':
             break
-        elif command == 'a':
-            print_results(auto_refactor(CAL))
-            save(CAL)
-        elif command == 'p':
-            print_summaries(CAL)
-        elif command == '?':
+        elif commands[0] == 'f':
+            filter_words = commands[1:]
+            filter_cal(NEW, filter_words)
+            save(NEW)
+
+        elif commands[0] == 'a':
+            print_results(auto_refactor(NEW))
+            save(NEW)
+
+        elif commands[0] == 'p':
+            print_summaries(NEW)
+        elif commands[0] == 'o':
+            print_summaries(OLD)
+        elif commands[0] == '?':
             help()
-        elif command == 'cls':
+        elif commands[0] == 'cls':
             os.system('cls' if os.name == 'nt' else 'clear')
         else:
             print("Not valid command. Type ? for help")
-    
